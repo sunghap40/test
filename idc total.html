@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="의왕IDC 수첩">
+    <meta name="theme-color" content="#121212">
+    
+    <title>의왕IDC 설비 장애 점검 / 업무 수첩</title>
+    
+    <!-- Firebase App (v8 호환 SDK) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <!-- 브라우저 탭 아이콘 -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23ffb300%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><ellipse cx=%2212%22 cy=%2212%22 rx=%2211%22 ry=%227%22/><path d=%22M8.5 7.5l-2 9M17.5 7.5l-2 9M7.5 12h9%22/></svg>">
+
+    <style>
+        /* 기본 테마 */
+        :root {
+            --bg-color: #121212;
+            --surface-color: #1e1e1e;
+            --primary-color: #ffb300; 
+            --hec-blue: #002c5f;
+            --hec-green: #007c36;
+            --text-color: #ffffff;
+            --text-muted: #9e9e9e;
+            --border-color: #333333;
+            --danger-color: #f44336;
+            --info-color: #2196f3;
+            --success-color: #4caf50;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 뷰 전환 처리 */
+        .view { display: none !important; }
+        .view.active { display: block !important; }
+        #viewLogin.view.active { display: flex !important; }
+
+        /* =========================================
+           로그인 화면 UI
+        ========================================= */
+        #viewLogin {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #e0eaf5 0%, #d4e8dd 100%);
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .login-card {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 40px 24px;
+            width: 100%;
+            max-width: 360px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            color: #333;
+        }
+        .login-form { text-align: left; margin-bottom: 24px; }
+        .login-form label { font-size: 0.85rem; font-weight: bold; color: #555; }
+        .login-input {
+            width: 100%; padding: 14px; margin: 8px 0 16px 0; border: 1px solid #ddd;
+            border-radius: 8px; box-sizing: border-box; font-size: 1rem;
+            background-color: #f9f9f9; color: #333;
+        }
+        .btn-login {
+            width: 100%; padding: 16px; border: none; border-radius: 8px;
+            background: linear-gradient(90deg, var(--hec-green), var(--hec-blue));
+            color: white; font-weight: bold; font-size: 1.1rem; cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 44, 95, 0.3); transition: 0.2s;
+        }
+        .btn-login:active { transform: scale(0.98); }
+        
+        .login-divider {
+            display: flex; align-items: center; text-align: center; margin: 24px 0; color: #aaa; font-size: 0.85rem;
+        }
+        .login-divider::before, .login-divider::after { content: ''; flex: 1; border-bottom: 1px solid #eee; }
+        .login-divider:not(:empty)::before { margin-right: .5em; }
+        .login-divider:not(:empty)::after { margin-left: .5em; }
+        
+        .btn-guest {
+            width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 8px;
+            background: #ffffff; color: var(--hec-blue); font-weight: bold; font-size: 1rem;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-guest:active { background: #f0f0f0; }
+        
+        .login-footer { margin-top: 24px; text-align: center; }
+
+        /* =========================================
+           메인 앱 UI
+        ========================================= */
+        header {
+            background-color: var(--surface-color);
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky; top: 0; z-index: 100;
+            display: flex; justify-content: space-between; align-items: center; gap: 12px;
+        }
+        .header-left { display: flex; align-items: center; flex: 1; overflow: hidden; gap: 8px; }
+        .header-right { flex-shrink: 0; display: flex; align-items: center; gap: 8px;}
+        
+        .header-title { font-size: 1.3rem; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-color); text-align: left; }
+        .header-btn { background: none; border: none; color: var(--primary-color); font-size: 1rem; cursor: pointer; padding: 6px; font-weight: bold; flex-shrink:0;}
+        .header-btn.back { display: none; }
+        .header-btn.logout { color: var(--text-muted); font-size: 0.85rem; border: 1px solid #555; border-radius: 4px; padding: 4px 8px;}
+        
+        .header-call-btn {
+            background-color: #f44336; color: #ffffff; border: 1px solid #d32f2f; border-radius: 6px;
+            padding: 8px 10px; font-size: 0.85rem; font-weight: bold; cursor: pointer;
+            display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(244, 67, 54, 0.5); white-space: nowrap;
+        }
+        .header-call-btn:active { transform: scale(0.95); background-color: #d32f2f; }
+        
+        .settings-btn {
+            background: none; border: none; font-size: 1.2rem; cursor: pointer; padding: 6px;
+            color: var(--text-muted); transition: color 0.2s;
+        }
+        .settings-btn:hover { color: var(--primary-color); }
+
+        .container { padding: 16px; padding-bottom: 60px; }
+
+        .category-header { font-size: 1.1rem; color: var(--primary-color); margin: 24px 0 12px 0; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .category-header:first-of-type { margin-top: 0; }
+
+        .grid-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .menu-card {
+            background-color: var(--surface-color); border-radius: 12px; padding: 24px 16px; text-align: center;
+            border: 1px solid var(--border-color); cursor: pointer; color: var(--text-color); font-size: 1rem;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .menu-icon { margin-bottom: 12px; display: flex; justify-content: center; align-items: center; }
+        .menu-icon svg { width: 44px; height: 44px; stroke: var(--primary-color); stroke-width: 1.5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+        h2 { font-size: 1.1rem; color: var(--primary-color); margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-top: 24px; }
+        h2:first-child { margin-top: 0; }
+        .view-title { color: white; font-size: 1.3rem; font-weight: bold; text-align: left; margin-bottom: 20px; border-bottom: none; }
+
+        /* 아코디언 & 기타 UI */
+        .process-acc, .accordion { background-color: var(--surface-color); color: var(--text-color); cursor: pointer; padding: 16px; width: 100%; text-align: left; border: 1px solid var(--border-color); font-size: 1rem; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; font-weight: bold; }
+        .process-acc.active, .accordion.active { border-radius: 8px 8px 0 0; border-bottom: none; background-color: #2c2c2c; }
+        .process-content, .accordion-content { padding: 0 16px; background-color: #1a1a1a; max-height: 0; overflow: hidden; transition: max-height 0.2s ease-out; border-radius: 0 0 8px 8px; border: 1px solid var(--border-color); border-top: none; margin-bottom: 12px; font-size: 0.9rem; line-height: 1.5; }
+        .process-content.open, .accordion-content.open { padding: 16px; }
+        
+        .sys-fault-card { background-color: var(--surface-color); border-radius: 8px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--border-color); }
+        .sys-fault-title { color: var(--primary-color); font-weight: bold; font-size: 1.05rem; margin-bottom: 12px; }
+        .sys-fault-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .sys-fault-box { background-color: #121212; padding: 12px; border-radius: 6px; font-size: 0.9rem; line-height: 1.5; }
+        .sys-fault-box h4 { margin: 0 0 8px 0; color: var(--text-muted); font-size: 0.85rem; border-bottom: 1px solid #333; padding-bottom: 4px; }
+        .ts-title { color: var(--primary-color); font-weight: bold; }
+        
+        /* 체크리스트 개선 */
+        .checklist { list-style: none; padding: 0; margin-bottom: 24px; }
+        .check-item { background-color: var(--surface-color); margin-bottom: 8px; padding: 16px; border-radius: 8px; display: flex; align-items: center; cursor: pointer; transition: 0.2s; touch-action: manipulation; }
+        .check-item.done { opacity: 0.5; text-decoration: line-through; }
+        .check-box { width: 24px; height: 24px; border: 2px solid var(--text-muted); border-radius: 50%; margin-right: 12px; display: inline-flex; justify-content: center; align-items: center; flex-shrink: 0; pointer-events: none; transition: 0.2s; }
+        .check-item.done .check-box { background-color: var(--primary-color); border-color: var(--primary-color); color: #000; font-weight: bold; }
+        .check-item.done .check-box::after { content: '✓'; }
+
+        .contact-card { background-color: var(--surface-color); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;}
+        .contact-info { display: flex; flex-direction: column; gap: 4px; }
+        .contact-company { font-size: 0.8rem; color: var(--text-muted); }
+        .contact-name { font-size: 1.1rem; font-weight: bold; }
+        .call-btn { background-color: var(--success-color); color: white; text-decoration: none; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; }
+        
+        /* 회원관리(설정) UI */
+        .user-list { display: flex; flex-direction: column; gap: 12px; }
+        .user-card { background-color: var(--surface-color); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; display: flex; justify-content: space-between; align-items: center; }
+        .user-info { display: flex; flex-direction: column; gap: 4px; }
+        .user-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+        .badge-admin { background-color: rgba(244, 67, 54, 0.2); color: var(--danger-color); border: 1px solid var(--danger-color); }
+        .badge-op { background-color: rgba(33, 150, 243, 0.2); color: var(--info-color); border: 1px solid var(--info-color); }
+        .user-actions button { background: #333; color: white; border: none; padding: 6px 12px; border-radius: 4px; margin-left: 4px; cursor: pointer; }
+        
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 0.85rem; margin-bottom: 4px; color: var(--text-muted); }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #121212; color: white; box-sizing: border-box; }
+        .form-row { display: flex; gap: 12px; align-items: center; margin-top: 12px;}
+        
+        /* TBM 카테고리 선택 버튼 (소수선/일반) */
+        .tbm-cat-group { display: flex; gap: 8px; margin-bottom: 16px; }
+        .tbm-cat-btn { flex: 1; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 0.95rem; cursor: pointer; border: 1px solid var(--border-color); background: var(--surface-color); color: var(--text-muted); transition: 0.2s; }
+        .tbm-cat-btn.active { background: linear-gradient(90deg, var(--hec-green), var(--hec-blue)); color: white; border-color: transparent; }
+
+        /* TBM 탭 UI */
+        .tbm-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; justify-content: flex-start; }
+        .tbm-tab-btn {
+            background-color: var(--surface-color); border: 1px solid var(--border-color); color: var(--text-color);
+            padding: 8px 14px; border-radius: 20px; font-size: 0.9rem; cursor: pointer; transition: all 0.2s;
+            text-align: center; white-space: nowrap; -webkit-appearance: none; touch-action: manipulation;
+        }
+        .tbm-tab-btn.active { background-color: var(--primary-color); color: #000; font-weight: bold; border-color: var(--primary-color); }
+        
+        .tbm-card { background-color: var(--surface-color); border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 12px; overflow: hidden; }
+        .tbm-header { background-color: #2c2c2c; padding: 16px; font-weight: bold; font-size: 1.1rem; color: var(--primary-color); display: flex; align-items: center; gap: 8px;}
+        .tbm-grid { display: grid; grid-template-columns: 1fr; gap: 1px; background-color: #333; }
+        .tbm-row { background-color: var(--surface-color); padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+        .tbm-label { font-size: 0.85rem; color: var(--info-color); font-weight: bold; }
+        .tbm-value { font-size: 0.95rem; line-height: 1.4; color: white; }
+
+        /* =========================================
+           신규 계산기용 UI 클래스
+        ========================================= */
+        .calc-box { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+        .calc-title { color: var(--primary-color); font-weight: bold; margin-bottom: 16px; font-size: 1.05rem; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px; }
+        .calc-btn { width: 100%; padding: 12px; background: linear-gradient(90deg, var(--hec-green), var(--hec-blue)); color: white; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; margin-top: 8px; font-size: 1rem; }
+        .calc-result { margin-top: 16px; padding: 16px; background: rgba(33, 150, 243, 0.1); border-radius: 6px; border-left: 4px solid var(--info-color); font-weight: bold; font-size: 1.1rem; color: white; display: none; line-height: 1.5; }
+    </style>
+</head>
+<body>
+
+    <!-- [0] 로그인 화면 -->
+    <div id="viewLogin" class="view active">
+        <div class="login-card">
+            <div style="font-weight: 900; font-size: 2.2rem; margin-bottom: 30px; color: var(--hec-blue); letter-spacing: -1px;">의왕IDC 설비 점검수첩</div>
+            
+            <div class="login-form">
+                <label>아이디</label>
+                <input type="text" id="loginId" class="login-input" placeholder="아이디 또는 오토에버사번을 입력하세요">
+                <label>비밀번호</label>
+                <input type="password" id="loginPw" class="login-input" placeholder="비밀번호를 입력하세요">
+                <button type="button" class="btn-login" onclick="attemptLogin()">로그인 ➔</button>
+            </div>
+            
+            <div class="login-divider">또는</div>
+            
+            <button type="button" class="btn-guest" onclick="loginAsWorker()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                설비점검 간편접속
+            </button>
+
+            <!-- 카드 안쪽 하단 웹관리자 및 아이콘 설치 방법 -->
+            <div class="login-footer">
+                <button type="button" onclick="toggleLoginInstallGuide()" style="background:none; border:none; color:var(--hec-blue); font-weight:bold; cursor:pointer; margin-bottom:12px; font-size:0.9rem; padding:8px; border-radius:6px; background:rgba(0, 44, 95, 0.05); width:100%;">
+                    📱 바탕화면(앱) 아이콘 설치 방법 ▼
+                </button>
+                <div id="loginInstallGuide" style="display:none; text-align:left; background:#f9f9f9; padding:16px; border-radius:8px; border:1px solid #eee; margin-bottom:20px; font-size:0.85rem; color:#333; line-height:1.6;">
+                    <b style="color:#d32f2f;">🍎 아이폰 (Safari)</b><br>
+                    1. 화면 하단의 <b>[공유(⬆️)]</b> 아이콘 터치<br>
+                    2. 메뉴를 내려서 <b>[홈 화면에 추가]</b> ➕ 터치<br><br>
+                    <b style="color:var(--hec-green);">🤖 안드로이드 (크롬/삼성)</b><br>
+                    1. 우측 상/하단의 <b>[메뉴(⋮ 또는 ≡)]</b> 터치<br>
+                    2. <b>[홈 화면에 추가]</b> (또는 현재 페이지 추가) 터치
+                </div>
+                <div style="font-size: 0.85rem; color: #888; font-weight: bold;">웹관리자 010-7454-4482</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 헤더 영역 -->
+    <header id="mainHeader" style="display: none;">
+        <div class="header-left">
+            <button type="button" class="header-btn back" id="backBtn" onclick="goHome()">◀</button>
+            <button type="button" class="header-btn logout" id="logoutBtn" onclick="logout()">로그아웃</button>
+            <div class="header-title" id="headerTitle">의왕IDC 설비 점검/업무 수첩</div>
+        </div>
+        <div class="header-right">
+            <button type="button" class="settings-btn" id="settingsBtn" onclick="openSettings()">⚙️</button>
+            <button type="button" class="header-call-btn" id="emergencyBtn" onclick="openView('viewContact', '🚨 비상연락망')">🚨 비상연락망</button>
+        </div>
+    </header>
+
+    <!-- [1] 홈 화면 -->
+    <div id="viewHome" class="container view">
+        
+        <!-- 공통 업무 섹션 -->
+        <div id="commonTaskSection">
+            <div class="category-header">📌 공통 업무</div>
+            <div class="grid-menu">
+                <button type="button" class="menu-card" onclick="openMemoView()">
+                    <span class="menu-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></span>
+                    <span>의왕 스케줄/인수인계</span>
+                </button>
+                <button type="button" class="menu-card" onclick="openTBMView()">
+                    <span class="menu-icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></span>
+                    <span>TBM 안전교육</span>
+                </button>
+                <button type="button" class="menu-card" onclick="openView('viewProcess', '🔄 재해대응프로세스')">
+                    <span class="menu-icon"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></span>
+                    <span>재해대응프로세스</span>
+                </button>
+                <button type="button" class="menu-card" onclick="openView('viewReportForm', '📝 재해보고양식')">
+                    <span class="menu-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
+                    <span>재해보고양식</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- [신규] 업무 지원 계산기 섹션 -->
+        <div class="category-header">🧮 업무 지원 계산기</div>
+        <div class="grid-menu">
+            <button type="button" class="menu-card" onclick="openView('viewCalcExpert', '의왕IDC 전문계산기')">
+                <span class="menu-icon">
+                    <svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="10" y2="10"/><line x1="14" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="10" y2="14"/><line x1="14" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="10" y2="18"/><line x1="14" y1="18" x2="16" y2="18"/></svg>
+                </span>
+                <span>의왕 전문계산기</span>
+            </button>
+            <button type="button" class="menu-card" onclick="openView('viewCalcSimple', '시설실무 간편계산기')">
+                <span class="menu-icon">
+                    <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                </span>
+                <span>시설실무 간편계산기</span>
+            </button>
+        </div>
+
+        <!-- 의왕IDC 공조설비 섹션 -->
+        <div class="category-header">❄️ 의왕IDC 공조설비</div>
+        <div class="grid-menu">
+            <button type="button" class="menu-card" onclick="openDetail('CCU')"><span class="menu-icon"><svg viewBox="0 0 24 24"><path d="M4 2h16a2 2 0 012 2v16a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2z"/><path d="M8 6h8"/><path d="M8 10h8"/><circle cx="12" cy="16" r="3"/></svg></span><span>항온항습기</span></button>
+            <button type="button" class="menu-card" onclick="openDetail('OUTDOOR')"><span class="menu-icon"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="12" cy="12" r="5"/><path d="M12 7v10"/><path d="M7 12h10"/></svg></span><span>실외기</span></button>
+            <button type="button" class="menu-card" onclick="openDetail('PUMP')"><span class="menu-icon"><svg viewBox="0 0 24 24"><circle cx="9" cy="12" r="6"/><path d="M15 12h6v-4h-6"/><circle cx="9" cy="12" r="2"/></svg></span><span>냉각수 펌프</span></button>
+            <button type="button" class="menu-card" onclick="openDetail('HEAT')"><span class="menu-icon"><svg viewBox="0 0 24 24"><path d="M4 6h12a2 2 0 012 2v8a2 2 0 01-2 2H4"/><path d="M20 18H8a2 2 0 01-2-2V8a2 2 0 012-2h12"/></svg></span><span>열교환기/응축기</span></button>
+            <button type="button" class="menu-card" onclick="openDetail('TANK')"><span class="menu-icon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10s3-2 8 0 8 0 8 0"/><path d="M4 14s3-2 8 0 8 0 8 0"/></svg></span><span>보충수 탱크</span></button>
+            <button type="button" class="menu-card" onclick="openDetail('SPRAY')"><span class="menu-icon"><svg viewBox="0 0 24 24"><path d="M12 3v6"/><path d="M9 12a3 3 0 106 0"/><path d="M12 15v6"/><path d="M6 6l2 2"/><path d="M18 6l-2 2"/></svg></span><span>살수펌프</span></button>
+        </div>
+
+        <!-- 의왕IDC 전기설비 섹션 -->
+        <div class="category-header">⚡ 의왕IDC 전기설비</div>
+        <div class="grid-menu">
+            <button type="button" class="menu-card" onclick="openDetail('VCB')"><span class="menu-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="16" r="3"/><path d="M12 7v6"/></svg></span><span>VCB (진공차단기)</span></button>
+            <button type="button" class="menu-card" onclick="openDetail('TR')"><span class="menu-icon"><svg viewBox="0 0 24 24"><circle cx="9" cy="12" r="4"/><circle cx="15" cy="12" r="4"/><path d="M9 8V4"/><path d="M15 8V4"/></svg></span><span>TR (변압기)</span></button>
+            <button type="button" class="menu-card" onclick="openDetail('ACB')"><span class="menu-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="7" y="7" width="10" height="10"/><path d="M12 11v2"/></svg></span><span>ACB (기중차단기)</span></button>
+            <button type="button" class="menu-card" onclick="openDetail('ATS')"><span class="menu-icon"><svg viewBox="0 0 24 24"><path d="M5 6h4l4 6h6"/><path d="M5 18h4l4-6"/></svg></span><span>ATS (자동절환)</span></button>
+            <button type="button" class="menu-card" onclick="openDetail('UPS')"><span class="menu-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 9l-2 3h4l-2 3"/></svg></span><span>UPS (무정전전원)</span></button>
+            <button type="button" class="menu-card" onclick="openDetail('PANEL')"><span class="menu-icon"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 3v18"/><path d="M8 8h8"/><path d="M8 12h8"/><path d="M8 16h8"/></svg></span><span>분전반</span></button>
+            <button type="button" class="menu-card" onclick="openDetail('GEN')"><span class="menu-icon"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="10" rx="2"/><circle cx="7" cy="14" r="2"/><circle cx="17" cy="14" r="2"/><path d="M6 8V5h12v3"/></svg></span><span>비상발전기</span></button>
+            <button type="button" class="menu-card" onclick="openView('viewPowerOutage', '⚡ 순간정전 보고양식')">
+                <span class="menu-icon">
+                    <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                </span>
+                <span>순간정전 보고양식</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- [신규] 의왕IDC 전문계산기 화면 -->
+    <div id="viewCalcExpert" class="container view">
+        <div class="tbm-cat-group">
+            <button id="calcExpTab0" class="tbm-cat-btn active" onclick="switchCalcExp(0)">1. 발전기 연료 소모량</button>
+            <button id="calcExpTab1" class="tbm-cat-btn" onclick="switchCalcExp(1)">2. UPS 배터리 용량</button>
+        </div>
+
+        <!-- 발전기 계산기 -->
+        <div id="calcExpBox0">
+            <div class="calc-box">
+                <div class="calc-title">▶ 발전기 시간당 연료소모량 계산</div>
+                <div class="form-group">
+                    <label>발전기 용량 (kW)</label>
+                    <input type="number" id="c_gen_kw" placeholder="예: 1000">
+                </div>
+                <div class="form-group">
+                    <label>적용 부하율 (%)</label>
+                    <input type="number" id="c_gen_load" placeholder="예: 80">
+                </div>
+                <div class="form-group">
+                    <label>연비계수 (L/kWh) - 통상 0.25</label>
+                    <input type="number" id="c_gen_rate" step="0.01" value="0.25">
+                </div>
+                <button class="calc-btn" onclick="runCalcGen()">계산하기</button>
+                <div id="c_gen_res" class="calc-result"></div>
+            </div>
+        </div>
+
+        <!-- UPS 계산기 -->
+        <div id="calcExpBox1" style="display:none;">
+            <div class="calc-box">
+                <div class="calc-title">▶ UPS 배터리 용량(AH) 계산</div>
+                <div class="form-group">
+                    <label>UPS 부하 용량 (kVA)</label>
+                    <input type="number" id="c_ups_kva" placeholder="예: 500">
+                </div>
+                <div class="form-group">
+                    <label>장비 역률 (보통 0.9)</label>
+                    <input type="number" id="c_ups_pf" step="0.1" value="0.9">
+                </div>
+                <div class="form-group">
+                    <label>요구 백업시간 (분)</label>
+                    <input type="number" id="c_ups_min" placeholder="예: 30">
+                </div>
+                <div class="form-group">
+                    <label>인버터 효율 (보통 0.9)</label>
+                    <input type="number" id="c_ups_eff" step="0.1" value="0.9">
+                </div>
+                <div class="form-group">
+                    <label>DC 링크/배터리 전압 (V)</label>
+                    <input type="number" id="c_ups_v" placeholder="예: 360">
+                </div>
+                <button class="calc-btn" onclick="runCalcUPS()">계산하기</button>
+                <div id="c_ups_res" class="calc-result"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- [신규] 시설실무 간편계산기 화면 -->
+    <div id="viewCalcSimple" class="container view">
+        <!-- 전력 계산 -->
+        <button class="process-acc" onclick="this.classList.toggle('active'); this.nextElementSibling.classList.toggle('open');">
+            <span>💡 소비 전력(kW) 계산기</span><span>▼</span>
+        </button>
+        <div class="process-content" style="padding:16px;">
+            <div class="form-group">
+                <label>상(Phase) 선택</label>
+                <select id="c_pow_phase" style="width:100%; padding:10px; border-radius:6px; background:#121212; color:white; border:1px solid #444;">
+                    <option value="1">단상 (1 Phase)</option>
+                    <option value="3" selected>3상 (3 Phase)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>전압 (V)</label>
+                <input type="number" id="c_pow_v" value="380">
+            </div>
+            <div class="form-group">
+                <label>전류 (A)</label>
+                <input type="number" id="c_pow_a" placeholder="예: 50">
+            </div>
+            <div class="form-group">
+                <label>역률 (보통 0.9)</label>
+                <input type="number" id="c_pow_pf" step="0.1" value="0.9">
+            </div>
+            <button class="calc-btn" onclick="runCalcPower()">계산하기</button>
+            <div id="c_pow_res" class="calc-result"></div>
+        </div>
+
+        <!-- 유량 계산 -->
+        <button class="process-acc" onclick="this.classList.toggle('active'); this.nextElementSibling.classList.toggle('open');">
+            <span>💧 배관 유량 계산기</span><span>▼</span>
+        </button>
+        <div class="process-content" style="padding:16px;">
+            <div class="form-group">
+                <label>배관 내경 (mm)</label>
+                <input type="number" id="c_flow_d" placeholder="예: 100">
+            </div>
+            <div class="form-group">
+                <label>배관 내 유속 (m/s) - 통상 1.5</label>
+                <input type="number" id="c_flow_v" value="1.5" step="0.1">
+            </div>
+            <button class="calc-btn" onclick="runCalcFlow()">계산하기</button>
+            <div id="c_flow_res" class="calc-result"></div>
+        </div>
+    </div>
+
+    <!-- 설정 (회원관리) 화면 -->
+    <div id="viewSettings" class="container view">
+        <h2 class="view-title">⚙️ 계정 및 권한 관리</h2>
+        
+        <div style="background: var(--surface-color); padding: 16px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border-color);">
+            <h3 style="margin-top: 0; color: var(--primary-color);">신규 계정 추가 / 수정</h3>
+            <div class="form-group">
+                <label>아이디 (수정 시 기존 ID 입력)</label>
+                <input type="text" id="editUserId" placeholder="아이디 입력">
+            </div>
+            <div class="form-group">
+                <label>비밀번호</label>
+                <input type="text" id="editUserPw" placeholder="비밀번호 입력">
+            </div>
+            <div class="form-group">
+                <label>소속/이름</label>
+                <input type="text" id="editUserAffil" placeholder="예: 현대엔지니어링 홍길동">
+            </div>
+            <div class="form-group">
+                <label>계정 권한 (분류)</label>
+                <select id="editUserRole">
+                    <option value="operator" selected>운영자 (일반)</option>
+                    <option value="admin">관리자 (설정 접근가능)</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" id="editUserRead" checked style="width:18px;"> 읽기 권한</label>
+                <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" id="editUserWrite" checked style="width:18px;"> 쓰기 권한</label>
+            </div>
+            <button onclick="saveUser()" style="width: 100%; padding: 12px; background: var(--success-color); color: white; border: none; border-radius: 6px; font-weight: bold; margin-top: 16px; cursor: pointer;">저장 / 등록하기</button>
+        </div>
+
+        <h3 style="color: var(--primary-color);">등록된 계정 목록</h3>
+        <div class="user-list" id="userListArea"></div>
+    </div>
+
+    <!-- 스케줄 및 인수인계 화면 -->
+    <div id="viewMemo" class="container view">
+        <div class="memo-form" id="memoWriteArea">
+            <input type="text" id="memoAuthor" style="width: 100%; background-color: #121212; border: 1px solid #333; color: white; padding: 12px; border-radius: 6px; box-sizing: border-box; margin-bottom: 12px;" placeholder="작성자 이름 (예: 홍길동)" autocomplete="off">
+            <textarea id="memoContent" style="width: 100%; background-color: #121212; border: 1px solid #333; color: white; padding: 12px; border-radius: 6px; box-sizing: border-box; margin-bottom: 12px; resize: vertical; min-height: 80px;" placeholder="주간/월간 스케줄 또는 인수인계 내용을 입력하세요."></textarea>
+            <div style="margin-bottom: 12px; display: flex; align-items: center;">
+                <input type="checkbox" id="memoImportant" style="width: 20px; height: 20px; accent-color: var(--danger-color);">
+                <label for="memoImportant" style="margin-left: 8px; color: var(--danger-color); font-weight: bold; cursor: pointer;">⭐ 중요 (목록 최상단 고정)</label>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button id="saveMemoBtn" onclick="saveMemo()" style="flex: 1; background-color: var(--primary-color); color: #000; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">저장하기</button>
+                <button id="cancelEditBtn" onclick="cancelEdit()" style="flex: 1; background-color: #444; color: white; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: none;">취소</button>
+            </div>
+        </div>
+        <h2 style="margin-top:0;">실시간 메모 기록</h2>
+        <div id="memoList"></div>
+    </div>
+
+    <!-- TBM 안전교육 화면 -->
+    <div id="viewTBM" class="container view">
+        <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom: 16px;">분류를 선택하신 후 아래에서 수행하실 작업을 탭하여 위험요인과 보호구를 확인하세요.</p>
+        
+        <div class="tbm-cat-group">
+            <button id="tbmCatBtn0" class="tbm-cat-btn" onclick="selectTBMCategory(0)">1. 자산 소수선공사 T.B.M</button>
+            <button id="tbmCatBtn1" class="tbm-cat-btn" onclick="selectTBMCategory(1)">2. 일반 T.B.M</button>
+        </div>
+        <div class="tbm-tabs" id="tbmTabs"></div>
+        <div id="tbmDetailBox"></div>
+    </div>
+
+    <!-- 비상연락망 화면 -->
+    <div id="viewContact" class="container view">
+        <div class="contact-list" id="contactArea"></div>
+    </div>
+
+    <!-- 재해보고양식 화면 -->
+    <div id="viewReportForm" class="container view">
+        <div style="background:var(--surface-color); border:1px solid var(--border-color); border-radius:8px; padding:16px; margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; padding-bottom:8px; margin-bottom:12px;">
+                <h3 style="margin:0; color:var(--info-color); font-size:1.05rem;">▶ 일반사고 보고</h3>
+                <button onclick="copyText('reportText1')" style="background:#333; color:white; border:1px solid #555; padding:6px 12px; border-radius:6px; font-size:0.8rem; font-weight:bold; cursor:pointer;">복사하기 📋</button>
+            </div>
+            <div id="reportText1" style="font-size:0.95rem; line-height:1.6; white-space:pre-line;">1. 사업장명 : 000사업장(0팀)
+2. 일시 : 
+3. 재해정도 : 부상 0명
+   - 00골절
+4. 재해내용
+   - 누가 : 홍길동 (협력사명, 공종, 성별, 나이)
+   - 어디서 : 
+   - 무엇을 : 
+   - 어떻게 : 
+5. 기타 : 
+보고자 : OOO 소장</div>
+            <div style="color:var(--danger-color); font-weight:bold; margin-top:12px; font-size:0.9rem;">* 초기보고: 3시간 이내 (중대재해 30분 이내)</div>
+        </div>
+        
+        <div style="background:var(--surface-color); border:1px solid var(--border-color); border-radius:8px; padding:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; padding-bottom:8px; margin-bottom:12px;">
+                <h3 style="margin:0; color:var(--info-color); font-size:1.05rem;">▶ 물적피해사고 보고</h3>
+                <button onclick="copyText('reportText2')" style="background:#333; color:white; border:1px solid #555; padding:6px 12px; border-radius:6px; font-size:0.8rem; font-weight:bold; cursor:pointer;">복사하기 📋</button>
+            </div>
+            <div id="reportText2" style="font-size:0.95rem; line-height:1.6; white-space:pre-line;">[자산사업장 OO피해 보고]
+1. 사업장명 : 000사업장(0팀)
+2. 일시 : 
+3. 피해정도
+   - 물적 : (예상 피해금액)
+4. 피해내용
+   - 내용 : (위치, 당사관리유무 등)
+   - 경과 : 
+   - 전망 : 
+   - 추정 원인 등
+5. 기타 : 
+보고자 : OOO 소장</div>
+             <div style="color:var(--danger-color); font-weight:bold; margin-top:12px; font-size:0.9rem;">* 초기보고: 3시간 이내</div>
+        </div>
+    </div>
+
+    <!-- 순간정전 보고양식 화면 -->
+    <div id="viewPowerOutage" class="container view">
+        <div style="background:var(--surface-color); border:1px solid var(--border-color); border-radius:8px; padding:16px; margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; padding-bottom:8px; margin-bottom:12px;">
+                <h3 style="margin:0; color:var(--primary-color); font-size:1.05rem;">▶ 순간정전 보고양식</h3>
+                <button onclick="copyText('powerOutageText')" style="background:#333; color:white; border:1px solid #555; padding:6px 12px; border-radius:6px; font-size:0.8rem; font-weight:bold; cursor:pointer;">복사하기 📋</button>
+            </div>
+            <div id="powerOutageText" style="font-size:0.95rem; line-height:1.6; white-space:pre-line;">1. 순간정전, 전압강하 일시 : 
+2. ALTS동작유무 : 
+3. 비상발전기 동작유무 : 
+4. UPS 동작유무 : 
+5. 배터리 백업 유무 : 
+   ㅇUBR:          , ㅇUBT: 
+6. 순간정전 인지 내용 : </div>
+            <div style="margin-top:20px;">
+                <a href="tel:031-450-2268" style="display:block; text-align:center; background:var(--danger-color); color:white; padding:14px; border-radius:8px; text-decoration:none; font-weight:bold; font-size:1.05rem; box-shadow:0 4px 6px rgba(244,67,54,0.3);">📞 한전 배전운영실(안양) 연결<br><span style="font-size:0.8rem; font-weight:normal;">031-450-2268</span></a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 재해대응프로세스 화면 -->
+    <div id="viewProcess" class="container view">
+        <button class="process-acc" onclick="this.classList.toggle('active'); this.nextElementSibling.classList.toggle('open');"><span>1. 중대 재해 (대형사고)</span><span style="color:var(--danger-color); font-size:0.85rem;">[30분 이내]</span></button>
+        <div class="process-content">
+            <div style="color:var(--danger-color); font-size:0.8rem; margin:8px 0;">* 업무 상 사망자 또는 6개월 이상 부상자가 동시에 2명 이상 발생한 사고</div>
+            <div style="margin-bottom:12px; border-bottom:1px dashed #333; padding-bottom:12px;">
+                <div style="color:var(--success-color); font-weight:bold; margin-bottom:4px;">[초기대응] 사고발생 통보</div>
+                <div style="color:#ffb300; font-size:0.85rem; margin-top:8px;">▶ 협력사 (당사사고 시 당사 수행)</div>
+                사고자 응급 조치(병원후송) → 사고발생통보(HEC) → 고용노동부 보고 → 환자상태 확인 → 가족연락 → 2차 재해방지/보존
+                <div style="color:#ffb300; font-size:0.85rem; margin-top:8px;">▶ HEC 현장 (소속팀)</div>
+                최초 보고(본사) → 재해자 상태 확인 및 경과 보고 → 고객사 대응/협의
+            </div>
+        </div>
+        <button class="process-acc" onclick="this.classList.toggle('active'); this.nextElementSibling.classList.toggle('open');"><span>2. 일반 재해</span><span style="color:var(--primary-color); font-size:0.85rem;">[3시간 이내]</span></button>
+        <div class="process-content">
+             <div style="color:var(--text-muted); font-size:0.8rem; margin:8px 0;">* 업무에 기인하여 발생한 인명사고(업무 중 교통사고 포함)</div>
+             <div style="margin-bottom:12px; padding-bottom:12px;">
+                <div style="color:var(--success-color); font-weight:bold; margin-bottom:4px;">[초기대응]</div>
+                협력사: 병원후송, HEC통보, 2차 재해방지 현장보존<br>
+                HEC현장: 최초 보고(본사), 대체인력 투입 확인
+            </div>
+        </div>
+        <button class="process-acc" onclick="this.classList.toggle('active'); this.nextElementSibling.classList.toggle('open');"><span>3. 기타 사고 (개인질환, 피해사고 등)</span><span style="color:var(--primary-color); font-size:0.85rem;">[3시간 이내]</span></button>
+        <div class="process-content">
+             <div style="color:var(--text-muted); font-size:0.8rem; margin:8px 0;">* 심혈관계/근골격계 질환 병원치료, 제3자 피해사고, 현장 내 인명사건 등</div>
+             <div style="margin-bottom:12px;">
+                <div style="color:var(--success-color); font-weight:bold; margin-bottom:4px;">[초기대응]</div>
+                협력사: 병원후송, HEC통보, 질병정도 파악, 가족 연락<br>
+                HEC현장: 최초 보고(본사), 대체 인력 투입 확인
+            </div>
+        </div>
+    </div>
+
+    <!-- 설비 상세 화면 -->
+    <div id="viewDetail" class="container view">
+        <h2 id="detailSubtitle">계통별 장애 원인 및 조치</h2>
+        <div id="systemFaultArea"></div>
+        <h2>우선순위 점검 (터치하여 완료처리)</h2>
+        <ul class="checklist" id="checklistArea"></ul>
+        <h2>빈도순 장애 발생 가이드</h2>
+        <div id="guideArea"></div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. Firebase 및 전역 변수 설정
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyCzsU9bB3ZBKsZ8p_hlS24ZHdxGZKuxXtY",
+            authDomain: "uiwang-idc.firebaseapp.com",
+            projectId: "uiwang-idc",
+            storageBucket: "uiwang-idc.firebasestorage.app",
+            messagingSenderId: "185648526696",
+            appId: "1:185648526696:web:dd6dc2994e00927abe52dd",
+            measurementId: "G-J3JCKQ3VKF"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let currentUser = null; 
+
+        // ==========================================
+        // 2. 로그인 처리 로직
+        // ==========================================
+        function attemptLogin() {
+            const id = document.getElementById('loginId').value.trim();
+            const pw = document.getElementById('loginPw').value.trim();
+            
+            if (!id || !pw) { 
+                alert("아이디와 비밀번호를 입력해주세요."); 
+                return; 
+            }
+
+            if (id === 'admin' && pw === '1234') {
+                currentUser = { id: 'admin', role: 'admin', affiliation: '시스템 관리자', canRead: true, canWrite: true };
+                applyPermissions();
+                document.getElementById('viewLogin').classList.remove('active');
+                document.getElementById('mainHeader').style.display = 'flex';
+                goHome();
+                return; 
+            }
+
+            db.collection("users").doc(id).get().then(doc => {
+                if (doc.exists && doc.data().pw === pw) {
+                    currentUser = { id: doc.id, ...doc.data() };
+                    applyPermissions();
+                    document.getElementById('viewLogin').classList.remove('active');
+                    document.getElementById('mainHeader').style.display = 'flex';
+                    goHome();
+                } else {
+                    alert("아이디 또는 비밀번호가 일치하지 않습니다.");
+                }
+            }).catch(e => {
+                console.error("Firebase Login Error:", e);
+                alert("데이터베이스 연결에 문제가 있습니다.\n(현재 관리자 계정: admin / 1234 는 접속 가능합니다.)");
+            });
+        }
+
+        function loginAsWorker() {
+            currentUser = { id: 'worker', role: 'worker', affiliation: '설비작업자', canRead: true, canWrite: false };
+            applyPermissions();
+            document.getElementById('viewLogin').classList.remove('active');
+            document.getElementById('mainHeader').style.display = 'flex';
+            goHome();
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById('mainHeader').style.display = 'none';
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById('viewLogin').classList.add('active');
+            document.getElementById('loginId').value = '';
+            document.getElementById('loginPw').value = '';
+        }
+
+        function applyPermissions() {
+            const isWorker = currentUser.role === 'worker';
+            document.getElementById('commonTaskSection').style.display = isWorker ? 'none' : 'block';
+            document.getElementById('emergencyBtn').style.display = isWorker ? 'none' : 'flex';
+            
+            document.getElementById('settingsBtn').style.display = (currentUser.role === 'admin') ? 'inline-block' : 'none';
+
+            const memoWriteArea = document.getElementById('memoWriteArea');
+            if(memoWriteArea) {
+                memoWriteArea.style.display = currentUser.canWrite ? 'block' : 'none';
+            }
+        }
+
+        function toggleLoginInstallGuide() {
+            const guide = document.getElementById('loginInstallGuide');
+            guide.style.display = guide.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // ==========================================
+        // 3. 설정 탭 (회원 관리)
+        // ==========================================
+        function openSettings() {
+            if (currentUser.role !== 'admin') {
+                alert("접속 권한이 없습니다. (관리자 전용)");
+                return;
+            }
+            document.getElementById('headerTitle').innerText = "⚙️ 계정 및 권한 관리";
+            document.getElementById('backBtn').style.display = 'inline-block';
+            document.getElementById('logoutBtn').style.display = 'none';
+            showView('viewSettings');
+            loadUsers();
+            window.scrollTo(0,0);
+        }
+
+        async function loadUsers() {
+            const listArea = document.getElementById('userListArea');
+            listArea.innerHTML = "불러오는 중...";
+            try {
+                const snapshot = await db.collection("users").get();
+                let html = '';
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const badge = data.role === 'admin' ? '<span class="user-badge badge-admin">관리자</span>' : '<span class="user-badge badge-op">운영자</span>';
+                    const readTag = data.canRead ? '읽기 O' : '읽기 X';
+                    const writeTag = data.canWrite ? '쓰기 O' : '쓰기 X';
+                    html += `
+                        <div class="user-card">
+                            <div class="user-info">
+                                <div style="font-weight:bold;">${doc.id} ${badge}</div>
+                                <div style="font-size:0.85rem; color:#aaa;">소속: ${data.affiliation || '없음'}</div>
+                                <div style="font-size:0.8rem; color:#888;">권한: ${readTag} / ${writeTag}</div>
+                            </div>
+                            <div class="user-actions">
+                                <button onclick="editUserFill('${doc.id}', '${data.pw}', '${data.role}', '${data.affiliation}', ${data.canRead}, ${data.canWrite})">수정</button>
+                                <button style="background:var(--danger-color);" onclick="deleteUser('${doc.id}')">삭제</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                listArea.innerHTML = html;
+            } catch (e) {
+                listArea.innerHTML = `<p style="color:var(--danger-color);">데이터를 불러올 수 없습니다. DB 규칙을 확인하세요.</p>`;
+            }
+        }
+
+        function editUserFill(id, pw, role, affil, read, write) {
+            document.getElementById('editUserId').value = id;
+            document.getElementById('editUserPw').value = pw;
+            document.getElementById('editUserRole').value = role;
+            document.getElementById('editUserAffil').value = affil || '';
+            document.getElementById('editUserRead').checked = read;
+            document.getElementById('editUserWrite').checked = write;
+            window.scrollTo(0,0);
+        }
+
+        async function saveUser() {
+            const id = document.getElementById('editUserId').value.trim();
+            const pw = document.getElementById('editUserPw').value.trim();
+            const role = document.getElementById('editUserRole').value;
+            const affil = document.getElementById('editUserAffil').value.trim();
+            const read = document.getElementById('editUserRead').checked;
+            const write = document.getElementById('editUserWrite').checked;
+
+            if(!id || !pw) { alert("아이디와 비밀번호는 필수입니다."); return; }
+
+            try {
+                await db.collection("users").doc(id).set({
+                    pw: pw, role: role, affiliation: affil, canRead: read, canWrite: write
+                });
+                alert("저장되었습니다.");
+                
+                document.getElementById('editUserId').value = '';
+                document.getElementById('editUserPw').value = '';
+                document.getElementById('editUserAffil').value = '';
+                document.getElementById('editUserRole').value = 'operator';
+                document.getElementById('editUserRead').checked = true;
+                document.getElementById('editUserWrite').checked = true;
+                
+                loadUsers();
+            } catch (e) {
+                alert("저장 실패. 데이터베이스 권한을 확인해주세요.");
+            }
+        }
+
+        async function deleteUser(id) {
+            if(id === 'admin') { alert("최고 관리자 계정은 삭제할 수 없습니다."); return; }
+            if(confirm(`[${id}] 계정을 정말 삭제하시겠습니까?`)) {
+                try {
+                    await db.collection("users").doc(id).delete();
+                    loadUsers();
+                } catch (e) {
+                    alert("삭제 실패.");
+                }
+            }
+        }
+
+        // ==========================================
+        // 4. 스케줄/인수인계 및 TBM, 연락망 제어
+        // ==========================================
+        let unsubscribeMemoListener = null;
+        let editingMemoId = null;
+        let currentMemosArray = []; 
+
+        function openMemoView() {
+            document.getElementById('headerTitle').innerText = "의왕 스케줄/인수인계";
+            document.getElementById('backBtn').style.display = 'inline-block';
+            document.getElementById('logoutBtn').style.display = 'none';
+            showView('viewMemo');
+            
+            if(currentUser && currentUser.affiliation) {
+                document.getElementById('memoAuthor').value = currentUser.affiliation;
+            }
+            
+            if (unsubscribeMemoListener) unsubscribeMemoListener();
+            unsubscribeMemoListener = db.collection("memos").orderBy("timestamp", "desc").limit(50)
+                .onSnapshot((querySnapshot) => {
+                    currentMemosArray = [];
+                    querySnapshot.forEach(doc => { currentMemosArray.push({id: doc.id, ...doc.data()}); });
+                    renderMemos();
+                });
+            window.scrollTo(0, 0);
+        }
+
+        function saveMemo() {
+            const author = document.getElementById('memoAuthor').value.trim();
+            const content = document.getElementById('memoContent').value.trim();
+            const isImportant = document.getElementById('memoImportant').checked;
+            const btn = document.getElementById('saveMemoBtn');
+
+            if (!author || !content) { alert("내용을 입력해주세요."); return; }
+
+            btn.disabled = true;
+            btn.innerText = "처리 중...";
+
+            if (editingMemoId) {
+                db.collection("memos").doc(editingMemoId).update({ author, content, important: isImportant }).then(() => {
+                    cancelEdit();
+                }).catch((error) => {
+                    alert("메모 수정에 실패했습니다.");
+                    btn.disabled = false;
+                    btn.innerText = "수정하기";
+                });
+            } else {
+                const newMemo = {
+                    author: author,
+                    content: content,
+                    important: isImportant,
+                    timestamp: new Date().toISOString(),
+                    displayTime: new Date().toLocaleString('ko-KR')
+                };
+
+                db.collection("memos").add(newMemo)
+                .then(() => {
+                    cancelEdit();
+                }).catch((error) => {
+                    alert("메모 저장에 실패했습니다.");
+                    btn.disabled = false;
+                    btn.innerText = "저장하기";
+                });
+            }
+        }
+
+        function editMemo(id) {
+            const memo = currentMemosArray.find(m => m.id === id);
+            if (!memo) return;
+            document.getElementById('memoAuthor').value = memo.author;
+            document.getElementById('memoContent').value = memo.content;
+            document.getElementById('memoImportant').checked = memo.important;
+            editingMemoId = id;
+            document.getElementById('saveMemoBtn').innerText = "수정하기";
+            document.getElementById('cancelEditBtn').style.display = "inline-block";
+            window.scrollTo(0,0);
+        }
+
+        function deleteMemo(id) {
+            if (confirm("삭제하시겠습니까?")) db.collection("memos").doc(id).delete();
+        }
+
+        function cancelEdit() {
+            document.getElementById('memoContent').value = '';
+            document.getElementById('memoImportant').checked = false;
+            editingMemoId = null;
+            document.getElementById('saveMemoBtn').innerText = "저장하기";
+            document.getElementById('saveMemoBtn').disabled = false;
+            document.getElementById('cancelEditBtn').style.display = "none";
+        }
+
+        function renderMemos() {
+            currentMemosArray.sort((a, b) => {
+                if (a.important === b.important) return new Date(b.timestamp) - new Date(a.timestamp);
+                return a.important ? -1 : 1;
+            });
+
+            let html = '';
+            const canWrite = currentUser && currentUser.canWrite;
+            
+            currentMemosArray.forEach(data => {
+                const impClass = data.important ? 'important' : '';
+                const impBadge = data.important ? '<span style="color:var(--danger-color);font-weight:bold;font-size:0.8rem;border:1px solid var(--danger-color);padding:2px 6px;border-radius:4px;margin-right:8px;">⭐ 중요</span>' : '';
+                
+                let actionBtns = '';
+                if(canWrite) {
+                    actionBtns = `<button style="background:none;border:1px solid #555;color:#aaa;border-radius:4px;padding:4px 8px;font-size:0.75rem;" onclick="editMemo('${data.id}')">수정</button>
+                                  <button style="background:none;border:1px solid #555;color:#aaa;border-radius:4px;padding:4px 8px;font-size:0.75rem;" onclick="deleteMemo('${data.id}')">삭제</button>`;
+                }
+
+                html += `
+                    <div style="background:var(--surface-color); border-left:4px solid ${data.important ? 'var(--danger-color)' : 'var(--primary-color)'}; padding:16px; border-radius:4px; margin-bottom:12px; ${data.important ? 'background-color:rgba(244,67,54,0.1);' : ''}">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:0.85rem; color:var(--text-muted);">
+                            <div>${impBadge}👤 ${data.author}</div>
+                            <div style="display:flex; gap:4px; align-items:center;">
+                                <span>${data.displayTime}</span>
+                                ${actionBtns}
+                            </div>
+                        </div>
+                        <div style="font-size:0.95rem; line-height:1.5; white-space:pre-line;">${data.content}</div>
+                    </div>
+                `;
+            });
+            document.getElementById('memoList').innerHTML = html || '<p style="color:#999;">등록된 메모가 없습니다.</p>';
+        }
+
+        // ==========================================
+        // 5. 신규 계산기 기능 로직 추가
+        // ==========================================
+        function switchCalcExp(idx) {
+            document.getElementById('calcExpTab0').classList.remove('active');
+            document.getElementById('calcExpTab1').classList.remove('active');
+            document.getElementById('calcExpBox0').style.display = 'none';
+            document.getElementById('calcExpBox1').style.display = 'none';
+
+            document.getElementById('calcExpTab' + idx).classList.add('active');
+            document.getElementById('calcExpBox' + idx).style.display = 'block';
+        }
+
+        // 발전기 소모량 계산
+        function runCalcGen() {
+            const kw = parseFloat(document.getElementById('c_gen_kw').value);
+            const load = parseFloat(document.getElementById('c_gen_load').value);
+            const rate = parseFloat(document.getElementById('c_gen_rate').value);
+            if(isNaN(kw) || isNaN(load) || isNaN(rate)) { alert("값을 올바르게 입력하세요."); return; }
+            
+            const res = kw * (load/100) * rate;
+            const resBox = document.getElementById('c_gen_res');
+            resBox.style.display = 'block';
+            resBox.innerHTML = `예상 연료소모량: <span style="color:var(--primary-color)">${res.toFixed(1)} L/h</span>`;
+        }
+
+        // UPS 용량 계산
+        function runCalcUPS() {
+            const kva = parseFloat(document.getElementById('c_ups_kva').value);
+            const pf = parseFloat(document.getElementById('c_ups_pf').value);
+            const min = parseFloat(document.getElementById('c_ups_min').value);
+            const eff = parseFloat(document.getElementById('c_ups_eff').value);
+            const v = parseFloat(document.getElementById('c_ups_v').value);
+            if(!kva || !pf || !min || !eff || !v) { alert("값을 올바르게 입력하세요."); return; }
+            
+            const current = (kva * 1000 * pf) / (v * eff);
+            const ah = current * (min / 60) * 1.25; 
+            
+            const resBox = document.getElementById('c_ups_res');
+            resBox.style.display = 'block';
+            resBox.innerHTML = `방전 전류: ${current.toFixed(1)} A<br>요구 배터리 용량: <span style="color:var(--primary-color)">${ah.toFixed(1)} AH</span> <div style="font-size:0.8rem;color:#aaa;margin-top:4px;">* 설계 여유율 1.25 적용</div>`;
+        }
+
+        // 전력 계산
+        function runCalcPower() {
+            const phase = document.getElementById('c_pow_phase').value;
+            const v = parseFloat(document.getElementById('c_pow_v').value);
+            const a = parseFloat(document.getElementById('c_pow_a').value);
+            const pf = parseFloat(document.getElementById('c_pow_pf').value);
+            if(!v || !a || !pf) { alert("값을 올바르게 입력하세요."); return; }
+            
+            let kw = (phase === '1') ? (v * a * pf) / 1000 : (1.732 * v * a * pf) / 1000;
+            
+            const resBox = document.getElementById('c_pow_res');
+            resBox.style.display = 'block';
+            resBox.innerHTML = `소비 전력: <span style="color:var(--primary-color)">${kw.toFixed(2)} kW</span>`;
+        }
+
+        // 유량 계산
+        function runCalcFlow() {
+            const d = parseFloat(document.getElementById('c_flow_d').value);
+            const v = parseFloat(document.getElementById('c_flow_v').value);
+            if(!d || !v) { alert("값을 올바르게 입력하세요."); return; }
+            
+            const r = (d / 2) / 1000; 
+            const area = Math.PI * r * r; 
+            const flowM3h = area * v * 3600; 
+            const flowLpm = flowM3h * 1000 / 60; 
+            
+            const resBox = document.getElementById('c_flow_res');
+            resBox.style.display = 'block';
+            resBox.innerHTML = `배관 유량: <span style="color:var(--primary-color)">${flowLpm.toFixed(1)} LPM (L/min)</span><br><div style="font-size:0.85rem;color:#aaa;margin-top:4px;">= ${flowM3h.toFixed(1)} CMH (m³/h)</div>`;
+        }
+
+        // ==========================================
+        // 6. TBM 및 설비 상세 데이터 제어
+        // ==========================================
+        function showView(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+        }
+
+        function goHome() {
+            showView('viewHome');
+            document.getElementById('headerTitle').innerText = '의왕IDC 설비 점검/업무 수첩';
+            document.getElementById('backBtn').style.display = 'none';
+            document.getElementById('logoutBtn').style.display = 'inline-block';
+            window.scrollTo(0, 0);
+        }
+
+        function openView(viewId, title) {
+            document.getElementById('headerTitle').innerText = title;
+            document.getElementById('backBtn').style.display = 'inline-block';
+            document.getElementById('logoutBtn').style.display = 'none';
+            showView(viewId);
+            window.scrollTo(0, 0);
+        }
+
+        window.toggleCheck = function(el) {
+            el.classList.toggle('done');
+        };
+
+        let currentTbmCategory = 0; 
+        function openTBMView() {
+            openView('viewTBM', 'TBM 안전교육');
+            selectTBMCategory(0); 
+        }
+
+        function selectTBMCategory(catIndex) {
+            currentTbmCategory = catIndex;
+            const btn0 = document.getElementById('tbmCatBtn0');
+            const btn1 = document.getElementById('tbmCatBtn1');
+            if (catIndex === 0) { btn0.classList.add('active'); btn1.classList.remove('active'); } 
+            else { btn0.classList.remove('active'); btn1.classList.add('active'); }
+
+            const dataArray = catIndex === 0 ? tbmDataAssets : tbmDataGeneral;
+            document.getElementById('tbmTabs').innerHTML = dataArray.map((tbm, idx) => 
+                `<button class="tbm-tab-btn" id="tbmBtn_${idx}" onclick="selectTBMItem(${idx})">${tbm.task}</button>`
+            ).join('');
+            selectTBMItem(0);
+        }
+
+        function selectTBMItem(index) {
+            document.querySelectorAll('.tbm-tab-btn').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById('tbmBtn_' + index);
+            if(activeBtn) activeBtn.classList.add('active');
+
+            const dataArray = currentTbmCategory === 0 ? tbmDataAssets : tbmDataGeneral;
+            const tbm = dataArray[index];
+            const detailArea = document.getElementById('tbmDetailBox');
+            
+            if (currentTbmCategory === 0) {
+                detailArea.innerHTML = `
+                    <div class="tbm-card">
+                        <div class="tbm-header">🛠️ ${tbm.task}</div>
+                        <div class="tbm-grid">
+                            <div class="tbm-row"><span class="tbm-label">① 필수 안전보호구</span><span class="tbm-value" style="color:var(--primary-color);">${tbm.ppe}</span></div>
+                            <div class="tbm-row"><span class="tbm-label">② 재해유형</span><span class="tbm-value" style="color:var(--danger-color);">${tbm.hazard}</span></div>
+                            <div class="tbm-row"><span class="tbm-label">③ 안전교육 (T.B.M)</span><span class="tbm-value">${tbm.tbm}</span></div>
+                            <div class="tbm-row"><span class="tbm-label">④ 작업 안전점검 체크</span><span class="tbm-value">${tbm.check}</span></div>
+                        </div>
+                    </div>`;
+            } else {
+                detailArea.innerHTML = `
+                    <div class="tbm-card">
+                        <div class="tbm-header">🛠️ ${tbm.task}</div>
+                        <div class="tbm-grid">
+                            <div class="tbm-row"><span class="tbm-label">① 작업내용</span><span class="tbm-value">${tbm.detail}</span></div>
+                            <div class="tbm-row"><span class="tbm-label">② 주요 위험요인</span><span class="tbm-value" style="color:var(--danger-color);">${tbm.hazard}</span></div>
+                            <div class="tbm-row"><span class="tbm-label">③ 안전작업 방법</span><span class="tbm-value">${tbm.method}</span></div>
+                            <div class="tbm-row"><span class="tbm-label">④ 필수 안전보호구</span><span class="tbm-value" style="color:var(--primary-color);">${tbm.ppe}</span></div>
+                            <div class="tbm-row"><span class="tbm-label">⑤ 작업구역 통제</span><span class="tbm-value">${tbm.control}</span></div>
+                            <div class="tbm-row"><span class="tbm-label">⑥ 비상상황 대응</span><span class="tbm-value">${tbm.emergency}</span></div>
+                        </div>
+                    </div>`;
+            }
+        }
+
+        function openDetail(equipKey) {
+            const data = dbData[equipKey];
+            if(!data) return;
+            openView('viewDetail', data.name + ' 점검');
+            
+            const isElec = ['VCB', 'TR', 'ACB', 'ATS', 'UPS', 'PANEL', 'GEN'].includes(equipKey);
+            const contactInfo = isElec ? "두잉씨엔에스 방민기 과장 010-9121-3102" : "삼건이엔씨 이상호부장 010-5264-1640";
+            document.getElementById('detailSubtitle').innerHTML = `계통별 장애 원인 및 조치 <br><span style="font-size:0.9rem; color:var(--danger-color); font-weight:normal; margin-top:6px; display:inline-block;">🚨 긴급지원: ${contactInfo}</span>`;
+            
+            document.getElementById('systemFaultArea').innerHTML = data.systemFaults.map(sys => `
+                <div class="sys-fault-card"><div class="sys-fault-title">⚙️ ${sys.category}</div>
+                <div class="sys-fault-grid"><div class="sys-fault-box"><h4>원인</h4><div>${sys.cause}</div></div>
+                <div class="sys-fault-box"><h4>조치 방법</h4><div>${sys.action}</div></div></div></div>
+            `).join('');
+
+            document.getElementById('checklistArea').innerHTML = data.steps.map(step => `
+                <li class="check-item" style="cursor:pointer;" onclick="toggleCheck(this)">
+                    <span class="check-box"></span><span style="flex:1; word-break:keep-all;">${step}</span>
+                </li>
+            `).join('');
+
+            document.getElementById('guideArea').innerHTML = data.guides.map(guide => `
+                <div style="background:var(--surface-color); padding:16px; border-radius:8px; margin-bottom:8px;">
+                    <div style="font-weight:bold; margin-bottom:8px;">🥇 ${guide.rank}위. ${guide.title}</div>
+                    <div style="font-size:0.95rem; color:#ccc;">현상: ${guide.desc}<br><span style="color:var(--primary-color);">조치: ${guide.action}</span></div>
+                </div>
+            `).join('');
+        }
+
+        function copyText(id) {
+            const text = document.getElementById(id).innerText;
+            const ta = document.createElement("textarea");
+            ta.value = text; document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy'); alert("복사되었습니다."); } 
+            catch (e) { alert("복사 실패"); }
+            document.body.removeChild(ta);
+        }
+
+        function renderContacts() {
+            document.getElementById('contactArea').innerHTML = contacts.map(c => `
+                <div class="contact-card">
+                    <div class="contact-info">
+                        <span class="contact-company">${c.company}</span>
+                        <span class="contact-name">${c.name}</span>
+                        <span style="font-size:0.9rem; color:#aaa;">${c.phone}</span>
+                    </div>
+                    <a href="tel:${c.phone.replace(/-/g, '')}" class="call-btn">📞 전화</a>
+                </div>
+            `).join('');
+        }
+
+    </script>
+</body>
+</html>
+
